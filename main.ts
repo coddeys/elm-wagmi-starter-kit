@@ -1,13 +1,6 @@
 import "./style.css";
 import { Elm } from "./src/Main.elm";
-import {
-  connect,
-  disconnect,
-  getChains,
-  getChainId,
-  getAccount,
-  getEnsName,
-} from "@wagmi/core";
+import { connect, disconnect, getChainId, getAccount } from "@wagmi/core";
 import { config } from "./config";
 import { metaMask } from "@wagmi/connectors";
 
@@ -33,9 +26,6 @@ async function connectMetaMask() {
   }
   const { address } = getAccount(config);
   const chainId = getChainId(config);
-  const chains = getChains(config);
-  console.log(chainId);
-  console.log(chains);
 
   app.ports.addressReceived.send({ chainId, address });
 }

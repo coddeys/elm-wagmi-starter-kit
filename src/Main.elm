@@ -1,9 +1,9 @@
 port module Main exposing (..)
 
 import Browser
-import Html exposing (..)
-import Html.Attributes exposing (..)
-import Html.Events exposing (..)
+import Html exposing (Html, button, div, strong, text)
+import Html.Attributes exposing (class, style)
+import Html.Events exposing (onClick)
 import Json.Decode as JD
 
 
