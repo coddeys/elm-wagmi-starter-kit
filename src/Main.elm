@@ -4,15 +4,18 @@ import Browser
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
-import Json.Decode as D
-import Json.Encode as E
+import Json.Decode as JD
 
 
 
 -- MAIN
 
 
-main : Program E.Value Model Msg
+type alias Flags =
+    ()
+
+
+main : Program Flags Model Msg
 main =
     Browser.element
         { init = init
@@ -28,17 +31,32 @@ main =
 
 type alias Model =
     { address : String
+    , wallet : WalletStatus
     }
 
 
-init : E.Value -> ( Model, Cmd Msg )
-init flags =
-    ( case D.decodeValue decoder flags of
-        Ok model ->
-            model
+type Wallet
+    = Wallet ChainId Address
 
-        Err _ ->
-            { address = "" }
+
+type alias ChainId =
+    Int
+
+
+type alias Address =
+    String
+
+
+type WalletStatus
+    = NotConnected
+    | Connected Wallet
+    | ConnectionError String
+    | Disconnected
+
+
+init : Flags -> ( Model, Cmd Msg )
+init _ =
+    ( { address = "", wallet = NotConnected }
     , Cmd.none
     )
 
@@ -49,7 +67,8 @@ init flags =
 
 type Msg
     = ConnectWalletClicked
-    | ReceivedAddress String
+    | DisconnectWalletClicked
+    | ReceivedAddress JD.Value
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -60,10 +79,29 @@ update msg model =
             , connectWallet ()
             )
 
-        ReceivedAddress str ->
-            ( { model | address = str }
-            , Cmd.none
+        DisconnectWalletClicked ->
+            ( { model | wallet = Disconnected }
+            , disconnectWallet ()
             )
+
+        ReceivedAddress value ->
+            case JD.decodeValue addressDecoder value of
+                Ok wallet ->
+                    ( { model | wallet = Connected wallet }
+                    , Cmd.none
+                    )
+
+                Err err ->
+                    ( model
+                    , Cmd.none
+                    )
+
+
+addressDecoder : JD.Decoder Wallet
+addressDecoder =
+    JD.map2 Wallet
+        (JD.field "chainId" JD.int)
+        (JD.field "address" JD.string)
 
 
 
@@ -73,12 +111,52 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div [ class "container", style "margin" "2em" ]
-        [ div [] [ button [ onClick ConnectWalletClicked ] [ text "Connect Wallet" ] ]
+        [ viewConnectWallet model.wallet
         , div [ style "margin-top" "1em" ]
-            [ text "Address: "
-            , strong [] [ text model.address ]
-            ]
+            [ viewWallet model.wallet ]
         ]
+
+
+viewConnectWallet : WalletStatus -> Html Msg
+viewConnectWallet walletStatus =
+    case walletStatus of
+        NotConnected ->
+            div [] [ button [ onClick ConnectWalletClicked ] [ text "Connect Wallet" ] ]
+
+        Connected (Wallet chainId address) ->
+            div [] [ button [ onClick DisconnectWalletClicked ] [ text "Disconnect from the Wallet" ] ]
+
+        ConnectionError string ->
+            text "error"
+
+        Disconnected ->
+            div [] [ button [ onClick ConnectWalletClicked ] [ text "Connect Wallet" ] ]
+
+
+viewWallet : WalletStatus -> Html Msg
+viewWallet walletStatus =
+    case walletStatus of
+        NotConnected ->
+            text "NOT CONNECTED"
+
+        Connected (Wallet chainId address) ->
+            div [ style "margin-top" "1em" ]
+                [ div [] [ text "CONNECTED" ]
+                , div []
+                    [ text "Chain ID: "
+                    , strong [] [ text (String.fromInt chainId) ]
+                    ]
+                , div []
+                    [ text "Address: "
+                    , strong [] [ text address ]
+                    ]
+                ]
+
+        ConnectionError string ->
+            text "error"
+
+        Disconnected ->
+            text "Disconnected"
 
 
 
@@ -88,7 +166,10 @@ view model =
 port connectWallet : () -> Cmd msg
 
 
-port addressReceived : (String -> msg) -> Sub msg
+port disconnectWallet : () -> Cmd msg
+
+
+port addressReceived : (JD.Value -> msg) -> Sub msg
 
 
 
@@ -98,20 +179,3 @@ port addressReceived : (String -> msg) -> Sub msg
 subscriptions : Model -> Sub Msg
 subscriptions _ =
     addressReceived ReceivedAddress
-
-
-
--- JSON ENCODE/DECODE
-
-
-encode : Model -> E.Value
-encode model =
-    E.object
-        [ ( "address", E.string model.address )
-        ]
-
-
-decoder : D.Decoder Model
-decoder =
-    D.map Model
-        (D.field "address" D.string)
