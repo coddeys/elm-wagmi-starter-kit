@@ -17,8 +17,8 @@ main =
     Browser.element
         { init = init
         , view = view
-        , update = updateWithStorage
-        , subscriptions = \_ -> Sub.none
+        , update = update
+        , subscriptions = subscriptions
         }
 
 
@@ -48,14 +48,20 @@ init flags =
 
 
 type Msg
-    = NoOp
+    = ConnectWalletClicked
+    | ReceivedAddress String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        NoOp ->
+        ConnectWalletClicked ->
             ( model
+            , connectWallet ()
+            )
+
+        ReceivedAddress str ->
+            ( { model | address = str }
             , Cmd.none
             )
 
@@ -66,9 +72,12 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div []
-        [ text "Address"
-        , text model.address
+    div [ class "container", style "margin" "2em" ]
+        [ div [] [ button [ onClick ConnectWalletClicked ] [ text "Connect Wallet" ] ]
+        , div [ style "margin-top" "1em" ]
+            [ text "Address: "
+            , strong [] [ text model.address ]
+            ]
         ]
 
 
@@ -76,18 +85,19 @@ view model =
 -- PORTS
 
 
-port setStorage : E.Value -> Cmd msg
+port connectWallet : () -> Cmd msg
 
 
-updateWithStorage : Msg -> Model -> ( Model, Cmd Msg )
-updateWithStorage msg oldModel =
-    let
-        ( newModel, cmds ) =
-            update msg oldModel
-    in
-    ( newModel
-    , Cmd.batch [ setStorage (encode newModel), cmds ]
-    )
+port addressReceived : (String -> msg) -> Sub msg
+
+
+
+-- SUBSCRIPTIONS
+
+
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    addressReceived ReceivedAddress
 
 
 
