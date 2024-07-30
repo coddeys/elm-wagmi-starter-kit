@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# elm-package generated files
+elm-stuff
+# elm-repl generated files
+repl-temp-*
