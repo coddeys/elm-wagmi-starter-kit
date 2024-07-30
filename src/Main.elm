@@ -30,8 +30,7 @@ main =
 
 
 type alias Model =
-    { address : String
-    , wallet : WalletStatus
+    { wallet : WalletStatus
     }
 
 
@@ -56,7 +55,7 @@ type WalletStatus
 
 init : Flags -> ( Model, Cmd Msg )
 init _ =
-    ( { address = "", wallet = NotConnected }
+    ( { wallet = NotConnected }
     , Cmd.none
     )
 
